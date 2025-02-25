@@ -71,6 +71,8 @@ abstract contract CometMainInterface is CometCore {
     function withdrawTo(address to, address asset, uint amount) virtual external;
     function withdrawFrom(address src, address to, address asset, uint amount) virtual external;
 
+    function borrow(address asset, uint128 amount) virtual external;
+
     function approveThis(address manager, address asset, uint amount) virtual external;
     function withdrawReserves(address to, uint amount) virtual external;
 

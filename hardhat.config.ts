@@ -51,7 +51,8 @@ import scrollGoerliRelationConfigMap from './deployments/scroll-goerli/usdc/rela
 import scrollRelationConfigMap from './deployments/scroll/usdc/relations';
 
 task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
-  for (const account of await hre.ethers.getSigners()) console.log(account.address);
+  for (const account of await hre.ethers.getSigners())
+    console.log(account.address);
 });
 
 /* note: boolean environment variables are imported as strings */
@@ -84,23 +85,25 @@ function* deriveAccounts(pk: string, n: number = 10) {
 export function requireEnv(varName, msg?: string): string {
   const varVal = process.env[varName];
   if (!varVal) {
-    throw new Error(msg ?? `Missing required environment variable '${varName}'`);
+    throw new Error(
+      msg ?? `Missing required environment variable '${varName}'`
+    );
   }
   return varVal;
 }
 
-// required environment variables
-[
-  'ETHERSCAN_KEY',
-  'SNOWTRACE_KEY',
-  'INFURA_KEY',
-  'ANKR_KEY',
-  'POLYGONSCAN_KEY',
-  'ARBISCAN_KEY',
-  'LINEASCAN_KEY',
-  'OPTIMISMSCAN_KEY',
-  'MANTLESCAN_KEY',
-].map((v) => requireEnv(v));
+// // required environment variables
+// [
+//   'ETHERSCAN_KEY',
+//   'SNOWTRACE_KEY',
+//   'INFURA_KEY',
+//   'ANKR_KEY',
+//   'POLYGONSCAN_KEY',
+//   'ARBISCAN_KEY',
+//   'LINEASCAN_KEY',
+//   'OPTIMISMSCAN_KEY',
+//   'MANTLESCAN_KEY',
+// ].map((v) => requireEnv(v));
 
 // Networks
 interface NetworkConfig {
@@ -120,70 +123,70 @@ const networkConfigs: NetworkConfig[] = [
   {
     network: 'polygon',
     chainId: 137,
-    url: `https://polygon-mainnet.infura.io/v3/${INFURA_KEY}`,
+    url: `https://polygon-mainnet.infura.io/v3/${INFURA_KEY}`
   },
   {
     network: 'optimism',
     chainId: 10,
-    url: `https://rpc.ankr.com/optimism/${ANKR_KEY}`,
+    url: `https://rpc.ankr.com/optimism/${ANKR_KEY}`
   },
   {
     network: 'mantle',
     chainId: 5000,
     // link for scenarios
-    url: `https://mantle-mainnet.infura.io/v3/${INFURA_KEY}`,
+    url: `https://mantle-mainnet.infura.io/v3/${INFURA_KEY}`
     // link for deployment
     // url: `https://rpc.mantle.xyz`,
   },
   {
     network: 'base',
     chainId: 8453,
-    url: `https://rpc.ankr.com/base/${ANKR_KEY}`,
+    url: `https://rpc.ankr.com/base/${ANKR_KEY}`
   },
   {
     network: 'arbitrum',
     chainId: 42161,
-    url: `https://arbitrum-mainnet.infura.io/v3/${INFURA_KEY}`,
+    url: `https://arbitrum-mainnet.infura.io/v3/${INFURA_KEY}`
   },
   {
     network: 'avalanche',
     chainId: 43114,
-    url: 'https://api.avax.network/ext/bc/C/rpc',
+    url: 'https://api.avax.network/ext/bc/C/rpc'
   },
   {
     network: 'fuji',
     chainId: 43113,
-    url: 'https://api.avax-test.network/ext/bc/C/rpc',
+    url: 'https://api.avax-test.network/ext/bc/C/rpc'
   },
   {
     network: 'mumbai',
     chainId: 80001,
-    url: `https://polygon-mumbai.infura.io/v3/${INFURA_KEY}`,
+    url: `https://polygon-mumbai.infura.io/v3/${INFURA_KEY}`
   },
   {
     network: 'arbitrum-goerli',
     chainId: 421613,
-    url: `https://arbitrum-goerli.infura.io/v3/${INFURA_KEY}`,
+    url: `https://arbitrum-goerli.infura.io/v3/${INFURA_KEY}`
   },
   {
     network: 'base-goerli',
     chainId: 84531,
-    url: `https://goerli.base.org/`,
+    url: `https://goerli.base.org/`
   },
   {
     network: 'linea-goerli',
     chainId: 59140,
-    url: `https://linea-goerli.infura.io/v3/${INFURA_KEY}`,
+    url: `https://linea-goerli.infura.io/v3/${INFURA_KEY}`
   },
   {
     network: 'scroll-goerli',
     chainId: 534353,
-    url: 'https://alpha-rpc.scroll.io/l2',
+    url: 'https://alpha-rpc.scroll.io/l2'
   },
   {
     network: 'scroll',
     chainId: 534352,
-    url: 'https://rpc.scroll.io',
+    url: 'https://rpc.scroll.io'
   }
 ];
 
@@ -196,13 +199,19 @@ function setupDefaultNetworkProviders(hardhatConfig: HardhatUserConfig) {
     hardhatConfig.networks[netConfig.network] = {
       chainId: netConfig.chainId,
       url:
-        (netConfig.network === GOV_NETWORK ? GOV_NETWORK_PROVIDER : undefined) ||
+        (netConfig.network === GOV_NETWORK
+          ? GOV_NETWORK_PROVIDER
+          : undefined) ||
         NETWORK_PROVIDER ||
         netConfig.url ||
         getDefaultProviderURL(netConfig.network),
       gas: netConfig.gas || 'auto',
       gasPrice: netConfig.gasPrice || 'auto',
-      accounts: REMOTE_ACCOUNTS ? 'remote' : (ETH_PK ? [...deriveAccounts(ETH_PK)] : { mnemonic: MNEMONIC }),
+      accounts: REMOTE_ACCOUNTS
+        ? 'remote'
+        : ETH_PK
+          ? [...deriveAccounts(ETH_PK)]
+          : { mnemonic: MNEMONIC }
     };
   }
 }
@@ -214,24 +223,25 @@ const config: HardhatUserConfig = {
   solidity: {
     version: '0.8.15',
     settings: {
-      optimizer: (
-        process.env['OPTIMIZER_DISABLED'] ? { enabled: false } : {
+      optimizer: process.env['OPTIMIZER_DISABLED']
+        ? { enabled: false }
+        : {
           enabled: true,
           runs: 1,
           details: {
             yulDetails: {
-              optimizerSteps: 'dhfoDgvulfnTUtnIf [xa[r]scLM cCTUtTOntnfDIul Lcul Vcul [j] Tpeul xa[rul] xa[r]cL gvif CTUca[r]LsTOtfDnca[r]Iulc] jmul[jul] VcTOcul jmul'
-            },
-          },
-        }
-      ),
+              optimizerSteps:
+                'dhfoDgvulfnTUtnIf [xa[r]scLM cCTUtTOntnfDIul Lcul Vcul [j] Tpeul xa[rul] xa[r]cL gvif CTUca[r]LsTOtfDnca[r]Iulc] jmul[jul] VcTOcul jmul'
+            }
+          }
+        },
       outputSelection: {
         '*': {
           '*': ['evm.deployedBytecode.sourceMap']
-        },
+        }
       },
-      viaIR: process.env['OPTIMIZER_DISABLED'] ? false : true,
-    },
+      viaIR: process.env['OPTIMIZER_DISABLED'] ? false : true
+    }
   },
 
   networks: {
@@ -241,13 +251,16 @@ const config: HardhatUserConfig = {
       gas: 120000000,
       gasPrice: 'auto',
       blockGasLimit: 120000000,
-      accounts: ETH_PK ?
-        [...deriveAccounts(ETH_PK)].map(privateKey => ({ privateKey, balance: (10n ** 36n).toString() }))
+      accounts: ETH_PK
+        ? [...deriveAccounts(ETH_PK)].map(privateKey => ({
+          privateKey,
+          balance: (10n ** 36n).toString()
+        }))
         : { mnemonic: MNEMONIC, accountsBalance: (10n ** 36n).toString() },
       // this should only be relied upon for test harnesses and coverage (which does not use viaIR flag)
       allowUnlimitedContractSize: true,
       hardfork: 'shanghai'
-    },
+    }
   },
 
   // See https://hardhat.org/plugins/nomiclabs-hardhat-etherscan.html#multiple-api-keys-and-alternative-block-explorers
@@ -282,7 +295,7 @@ const config: HardhatUserConfig = {
       // Scroll Testnet
       'scroll-goerli': ETHERSCAN_KEY,
       // Scroll
-      'scroll': ETHERSCAN_KEY,
+      scroll: ETHERSCAN_KEY
     },
     customChains: [
       {
@@ -363,7 +376,7 @@ const config: HardhatUserConfig = {
 
   typechain: {
     outDir: 'build/types',
-    target: 'ethers-v5',
+    target: 'ethers-v5'
   },
 
   deploymentManager: {
@@ -385,7 +398,7 @@ const config: HardhatUserConfig = {
         weth: mainnetWethRelationConfigMap,
         usdt: mainnetUsdtRelationConfigMap,
         wsteth: mainnetWstETHRelationConfigMap,
-        usds: mainnetUsdsRelationConfigMap,
+        usds: mainnetUsdsRelationConfigMap
       },
       polygon: {
         usdc: polygonRelationConfigMap,
@@ -401,7 +414,7 @@ const config: HardhatUserConfig = {
         'usdc.e': arbitrumBridgedUsdcGoerliRelationConfigMap,
         usdc: arbitrumGoerliNativeUsdcRelationConfigMap
       },
-      'base': {
+      base: {
         usdbc: baseUsdbcRelationConfigMap,
         weth: baseWethRelationConfigMap,
         usdc: baseUsdcRelationConfigMap,
@@ -419,16 +432,16 @@ const config: HardhatUserConfig = {
         usdt: optimismUsdtRelationConfigMap,
         weth: optimismWethRelationConfigMap
       },
-      'mantle': {
-        'usde': mantleRelationConfigMap
+      mantle: {
+        usde: mantleRelationConfigMap
       },
       'scroll-goerli': {
         usdc: scrollGoerliRelationConfigMap
       },
-      'scroll': {
+      scroll: {
         usdc: scrollRelationConfigMap
       }
-    },
+    }
   },
 
   scenario: {
@@ -437,12 +450,12 @@ const config: HardhatUserConfig = {
         name: 'mainnet',
         network: 'mainnet',
         deployment: 'usdc',
-        allocation: 1.0, // eth
+        allocation: 1.0 // eth
       },
       {
         name: 'mainnet-weth',
         network: 'mainnet',
-        deployment: 'weth',
+        deployment: 'weth'
       },
       {
         name: 'mainnet-usdt',
@@ -477,7 +490,7 @@ const config: HardhatUserConfig = {
       {
         name: 'goerli-weth',
         network: 'goerli',
-        deployment: 'weth',
+        deployment: 'weth'
       },
       {
         name: 'sepolia-usdc',
@@ -595,7 +608,7 @@ const config: HardhatUserConfig = {
         name: 'optimism-usdt',
         network: 'optimism',
         deployment: 'usdt',
-        auxiliaryBase: 'mainnet',
+        auxiliaryBase: 'mainnet'
       },
       {
         name: 'optimism-weth',
@@ -621,7 +634,7 @@ const config: HardhatUserConfig = {
         deployment: 'usdc',
         auxiliaryBase: 'mainnet'
       }
-    ],
+    ]
   },
 
   mocha: {
@@ -629,29 +642,29 @@ const config: HardhatUserConfig = {
     reporterOptions: {
       reporterEnabled: ['spec', 'json'],
       jsonReporterOptions: {
-        output: 'test-results.json',
-      },
+        output: 'test-results.json'
+      }
     },
     timeout: 150_000
   },
 
   paths: {
-    tests: './test',
+    tests: './test'
   },
 
   contractSizer: {
     alphaSort: true,
     disambiguatePaths: false,
     runOnCompile: true,
-    strict: false, // allow tests to run anyway
+    strict: false // allow tests to run anyway
   },
 
   gasReporter: {
     enabled: REPORT_GAS === 'true' ? true : false,
     currency: 'USD',
     coinmarketcap: COINMARKETCAP_API_KEY,
-    gasPrice: 200, // gwei
-  },
+    gasPrice: 200 // gwei
+  }
 };
 
 setupDefaultNetworkProviders(config);

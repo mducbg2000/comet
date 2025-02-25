@@ -22,6 +22,7 @@ contract CometStorage {
     }
 
     struct TotalsCollateral {
+        uint128 totalBorrowAsset;
         uint128 totalSupplyAsset;
         uint128 _reserved;
     }
@@ -35,6 +36,7 @@ contract CometStorage {
     }
 
     struct UserCollateral {
+        uint128 borrowBalance;
         uint128 balance;
         uint128 _reserved;
     }
@@ -69,7 +71,8 @@ contract CometStorage {
     mapping(address => UserBasic) public userBasic;
 
     /// @notice Mapping of users to collateral data per collateral asset
-    mapping(address => mapping(address => UserCollateral)) public userCollateral;
+    mapping(address => mapping(address => UserCollateral))
+        public userCollateral;
 
     /// @notice Mapping of magic liquidator points
     mapping(address => LiquidatorPoints) public liquidatorPoints;

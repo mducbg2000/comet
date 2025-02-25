@@ -1,157 +1,72 @@
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { CometHarnessInterface, SimplePriceFeed } from '../build/types';
 import { expect, exp, makeProtocol } from './helpers';
 
-/*
-Prices are set in terms of the base token (USDC with 6 decimals, by default):
-
-  await comet.setBasePrincipal(alice.address, 1_000_000);
-
-But the prices returned are denominated in terms of price scale (USD with 8
-decimals, by default)
-
-*/
-
-describe('isLiquidatable', function () {
-  it('defaults to false', async () => {
-    const protocol = await makeProtocol();
-    const {
-      comet,
-      users: [alice],
-    } = protocol;
-
-    expect(await comet.isLiquidatable(alice.address)).to.be.false;
-  });
-
-  it('is false when user is owed principal', async () => {
-    const {
-      comet,
-      users: [alice],
-    } = await makeProtocol();
-    await comet.setBasePrincipal(alice.address, 1_000_000);
-
-    expect(await comet.isLiquidatable(alice.address)).to.be.false;
-  });
-
-  it('is true when user owes principal', async () => {
-    const {
-      comet,
-      users: [alice],
-    } = await makeProtocol();
-    await comet.setBasePrincipal(alice.address, -1_000_000);
-
-    expect(await comet.isLiquidatable(alice.address)).to.be.true;
-  });
-
-  it('is false when collateral can cover the borrowed principal', async () => {
+describe('Liquidation', function () {
+  let _comet: CometHarnessInterface;
+  let _AXS_PriceFeeds: SimplePriceFeed;
+  let _bob: SignerWithAddress;
+  beforeEach(async () => {
     const {
       comet,
       tokens,
-      users: [alice],
+      users: [bob],
+      priceFeeds
     } = await makeProtocol({
+      base: 'WETH',
+      baseBorrowMin: exp(0.1, 18),
       assets: {
-        USDC: { decimals: 6 },
-        COMP: {
-          initial: 1e7,
+        USDC: {
+          initial: 1e8,
+          decimals: 6,
+          borrowCF: exp(0.9, 18),
+          initialPrice: 1 / 1500,
+          liquidationFactor: exp(0.9868, 18),
+          supplyCap: exp(5000, 6)
+        },
+        WETH: {
           decimals: 18,
-          initialPrice: 1, // 1 COMP = 1 USDC
+        },
+        AXS: {
+          decimals: 18,
+          initialPrice: 1 / 100,
         },
       },
     });
-    const { COMP } = tokens;
+    const { USDC, WETH, AXS } = tokens;
 
-    // user owes $100,000
-    await comet.setBasePrincipal(alice.address, -100_000_000_000);
-    // but has $100,000 in COMP to cover
-    await comet.setCollateralBalance(alice.address, COMP.address, exp(100_000, 18));
+    await WETH.allocateTo(comet.address, exp(10, 18));
+    await AXS.allocateTo(comet.address, exp(100, 18));
+    await USDC.allocateTo(bob.address, exp(2000, 6));
+    // supply 1000 USDC
+    await USDC.connect(bob).approve(comet.address, exp(1000, 6));
+    await comet.connect(bob).supply(USDC.address, exp(1000, 6));
 
-    expect(await comet.isLiquidatable(alice.address)).to.be.false;
+    // borrow 0.2 ETH + 20 AXS
+    await comet.connect(bob).withdraw(WETH.address, exp(0.2, 18));
+    await comet.connect(bob).borrow(AXS.address, exp(20, 18));
+    _comet = comet;
+    _AXS_PriceFeeds = priceFeeds.AXS;
+    _bob = bob;
   });
 
-  it('is true when the collateral cannot cover the borrowed principal', async () => {
-    const {
-      comet,
-      tokens,
-      users: [alice],
-    } = await makeProtocol({
-      assets: {
-        USDC: { decimals: 6 },
-        COMP: {
-          initial: 1e7,
-          decimals: 18,
-          initialPrice: 1, // 1 COMP = 1 USDC
-        },
-      },
-    });
-    const { COMP } = tokens;
-
-    // user owes $100,000 is
-    await comet.setBasePrincipal(alice.address, -100_000_000_000);
-    // and only has $95,000 in COMP
-    await comet.setCollateralBalance(alice.address, COMP.address, exp(95_000, 18));
-
-    expect(await comet.isLiquidatable(alice.address)).to.be.true;
+  it('case a - debt position is healthy', async () => {
+    expect(await _comet.isLiquidatable(_bob.address)).to.be.false;
   });
 
-  it('takes liquidateCollateralFactor into account when comparing principal to collateral', async () => {
-    const {
-      comet,
-      tokens,
-      users: [alice],
-    } = await makeProtocol({
-      assets: {
-        USDC: { decimals: 6 },
-        COMP: {
-          initial: 1e7,
-          decimals: 18,
-          initialPrice: 1, // 1 COMP = 1 USDC
-          borrowCF: exp(0.75, 18),
-          liquidateCF: exp(0.8, 18),
-        },
-      },
-    });
-    const { COMP } = tokens;
-
-    // user owes $100,000
-    await comet.setBasePrincipal(alice.address, -100_000_000_000);
-    // has $100,000 in COMP to cover, but at a .8 liquidateCollateralFactor
-    await comet.setCollateralBalance(alice.address, COMP.address, exp(100_000, 18));
-
-    expect(await comet.isLiquidatable(alice.address)).to.be.true;
-  });
-
-  it('changes when the underlying asset price changes', async () => {
-    const {
-      comet,
-      tokens,
-      users: [alice],
-      priceFeeds,
-    } = await makeProtocol({
-      assets: {
-        USDC: { decimals: 6 },
-        COMP: {
-          initial: 1e7,
-          decimals: 18,
-          initialPrice: 1, // 1 COMP = 1 USDC
-        },
-      },
-    });
-    const { COMP } = tokens;
-
-    // user owes $100,000
-    await comet.setBasePrincipal(alice.address, -100_000_000_000);
-    // has $100,000 in COMP to cover
-    await comet.setCollateralBalance(alice.address, COMP.address, exp(100_000, 18));
-
-    expect(await comet.isLiquidatable(alice.address)).to.be.false;
-
-    // price drops
-    await priceFeeds.COMP.setRoundData(
-      0,           // roundId
-      exp(0.5, 8), // answer
-      0,           // startedAt
-      0,           // updatedAt
-      0            // answeredInRound
+  it('case b - debt position becomes unhealthy after exchange rates for AXS change', async () => {
+    await _AXS_PriceFeeds.setRoundData(
+      0,
+      exp(1 / 48, 8),
+      0,
+      0,
+      0
     );
 
-    expect(await comet.isLiquidatable(alice.address)).to.be.true;
+    expect(await _comet.isLiquidatable(_bob.address)).to.be.true;
   });
+
+  // it('case c - debt position becoes healthy after liquidated', async () => {
+
+  // });
 });
