@@ -755,6 +755,8 @@ contract Comet is CometMainInterface {
                 i++;
             }
         }
+        console.log("Liquidity: ");
+        console.logInt(liquidity);
         return liquidity < 0;
     }
 
@@ -1457,7 +1459,7 @@ contract Comet is CometMainInterface {
         updateAssetsIn(src, assetInfo, srcCollateral, srcCollateralNew);
 
         // Note: no accrue interest, BorrowCF < LiquidationCF covers small changes
-        if (!isBorrowCollateralized(src)) revert NotCollateralized();
+        // if (!isBorrowCollateralized(src)) revert NotCollateralized();
 
         doTransferOut(asset, to, amount);
 
@@ -1485,7 +1487,7 @@ contract Comet is CometMainInterface {
         AssetInfo memory assetInfo = getAssetInfoByAddress(asset);
         updateAssetsIn(src, assetInfo, srcBorrowBalance, srcBorrowBalanceNew);
 
-        if (!isBorrowCollateralized(src)) revert NotCollateralized();
+        // if (!isBorrowCollateralized(src)) revert NotCollateralized();
 
         doTransferOut(asset, to, amount);
     }
@@ -1550,7 +1552,9 @@ contract Comet is CometMainInterface {
                     assetInfo.scale
                 );
                 deltaValue += mulFactor(value, assetInfo.liquidationFactor);
-
+                
+                updateAssetsIn(account, assetInfo, seizeAmount, 0);
+                
                 emit AbsorbCollateral(
                     absorber,
                     account,
@@ -1569,17 +1573,18 @@ contract Comet is CometMainInterface {
             basePrice,
             uint64(baseScale)
         );
+
         int256 newBalance = oldBalance + signed256(deltaBalance);
         // New balance will not be negative, all excess debt absorbed by reserves
-        if (newBalance < 0) {
-            newBalance = 0;
-        }
+        // if (newBalance < 0) {
+        //     newBalance = 0;
+        // }
 
         int104 newPrincipal = principalValue(newBalance);
         updateBasePrincipal(account, accountUser, newPrincipal);
 
         // reset assetsIn
-        userBasic[account].assetsIn = 0;
+        // userBasic[account].assetsIn = 0;
 
         (uint104 repayAmount, uint104 supplyAmount) = repayAndSupplyAmount(
             oldPrincipal,
@@ -1622,26 +1627,21 @@ contract Comet is CometMainInterface {
         uint baseAmount,
         address recipient
     ) external override nonReentrant {
-        if (isBuyPaused()) revert Paused();
-
-        int reserves = getReserves();
-        if (reserves >= 0 && uint(reserves) >= targetReserves)
-            revert NotForSale();
-
-        // Note: Re-entrancy can skip the reserves check above on a second buyCollateral call.
-        baseAmount = doTransferIn(baseToken, msg.sender, baseAmount);
-
-        uint collateralAmount = quoteCollateral(asset, baseAmount);
-        if (collateralAmount < minAmount) revert TooMuchSlippage();
-        if (collateralAmount > getCollateralReserves(asset))
-            revert InsufficientReserves();
-
-        // Note: Pre-transfer hook can re-enter buyCollateral with a stale collateral ERC20 balance.
-        //  Assets should not be listed which allow re-entry from pre-transfer now, as too much collateral could be bought.
-        //  This is also a problem if quoteCollateral derives its discount from the collateral ERC20 balance.
-        doTransferOut(asset, recipient, safe128(collateralAmount));
-
-        emit BuyCollateral(msg.sender, asset, baseAmount, collateralAmount);
+        // if (isBuyPaused()) revert Paused();
+        // int reserves = getReserves();
+        // if (reserves >= 0 && uint(reserves) >= targetReserves)
+        //     revert NotForSale();
+        // // Note: Re-entrancy can skip the reserves check above on a second buyCollateral call.
+        // baseAmount = doTransferIn(baseToken, msg.sender, baseAmount);
+        // uint collateralAmount = quoteCollateral(asset, baseAmount);
+        // if (collateralAmount < minAmount) revert TooMuchSlippage();
+        // if (collateralAmount > getCollateralReserves(asset))
+        //     revert InsufficientReserves();
+        // // Note: Pre-transfer hook can re-enter buyCollateral with a stale collateral ERC20 balance.
+        // //  Assets should not be listed which allow re-entry from pre-transfer now, as too much collateral could be bought.
+        // //  This is also a problem if quoteCollateral derives its discount from the collateral ERC20 balance.
+        // doTransferOut(asset, recipient, safe128(collateralAmount));
+        // emit BuyCollateral(msg.sender, asset, baseAmount, collateralAmount);
     }
 
     /**
@@ -1682,15 +1682,12 @@ contract Comet is CometMainInterface {
      * @param amount The amount of reserves to be withdrawn from the protocol
      */
     function withdrawReserves(address to, uint amount) external override {
-        if (msg.sender != governor) revert Unauthorized();
-
-        int reserves = getReserves();
-        if (reserves < 0 || amount > unsigned256(reserves))
-            revert InsufficientReserves();
-
-        doTransferOut(baseToken, to, amount);
-
-        emit WithdrawReserves(to, amount);
+        // if (msg.sender != governor) revert Unauthorized();
+        // int reserves = getReserves();
+        // if (reserves < 0 || amount > unsigned256(reserves))
+        //     revert InsufficientReserves();
+        // doTransferOut(baseToken, to, amount);
+        // emit WithdrawReserves(to, amount);
     }
 
     /**
