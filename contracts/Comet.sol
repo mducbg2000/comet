@@ -715,13 +715,10 @@ contract Comet is CometMainInterface {
     function isLiquidatable(
         address account
     ) public view override returns (bool) {
-        int104 principal = userBasic[account].principal;
-
-        if (principal >= 0) {
-            return false;
-        }
+        int104 principal = 0;
 
         uint16 assetsIn = userBasic[account].assetsIn;
+
         int liquidity = signedMulPrice(
             presentValue(principal),
             getPrice(baseTokenPriceFeed),
@@ -730,16 +727,13 @@ contract Comet is CometMainInterface {
 
         for (uint8 i = 0; i < numAssets; ) {
             if (isInAsset(assetsIn, i)) {
-                // if (liquidity >= 0) {
-                //     return false;
-                // }
-
                 AssetInfo memory asset = getAssetInfo(i);
                 uint newAmount = mulPrice(
                     userCollateral[account][asset.asset].balance,
                     getPrice(asset.priceFeed),
                     asset.scale
                 );
+
                 liquidity += signed256(
                     mulFactor(newAmount, asset.borrowCollateralFactor)
                 );
@@ -1487,7 +1481,7 @@ contract Comet is CometMainInterface {
         AssetInfo memory assetInfo = getAssetInfoByAddress(asset);
         updateAssetsIn(src, assetInfo, srcBorrowBalance, srcBorrowBalanceNew);
 
-        // if (!isBorrowCollateralized(src)) revert NotCollateralized();
+        if (!isBorrowCollateralized(src)) revert NotCollateralized();
 
         doTransferOut(asset, to, amount);
     }
@@ -1552,9 +1546,7 @@ contract Comet is CometMainInterface {
                     assetInfo.scale
                 );
                 deltaValue += mulFactor(value, assetInfo.liquidationFactor);
-                
-                updateAssetsIn(account, assetInfo, seizeAmount, 0);
-                
+
                 emit AbsorbCollateral(
                     absorber,
                     account,
@@ -1573,18 +1565,17 @@ contract Comet is CometMainInterface {
             basePrice,
             uint64(baseScale)
         );
-
         int256 newBalance = oldBalance + signed256(deltaBalance);
         // New balance will not be negative, all excess debt absorbed by reserves
-        // if (newBalance < 0) {
-        //     newBalance = 0;
-        // }
+        if (newBalance < 0) {
+            newBalance = 0;
+        }
 
         int104 newPrincipal = principalValue(newBalance);
         updateBasePrincipal(account, accountUser, newPrincipal);
 
         // reset assetsIn
-        // userBasic[account].assetsIn = 0;
+        userBasic[account].assetsIn = 0;
 
         (uint104 repayAmount, uint104 supplyAmount) = repayAndSupplyAmount(
             oldPrincipal,
@@ -1611,6 +1602,50 @@ contract Comet is CometMainInterface {
                 presentValueSupply(baseSupplyIndex, unsigned104(newPrincipal))
             );
         }
+    }
+
+    /**
+     * @param account tài khoản bị thanh lý
+     * @param cAsset địa chỉ tài sản thế chấp
+     * @param cAmount số lượng tài sản thế chấp bị thanh lý
+     * @param bAsset địa chỉ tài sản mượn
+     */
+    function liquidate(
+        address account,
+        address cAsset,
+        uint128 cAmount,
+        address bAsset
+    ) external override {
+        AssetInfo memory collateralAsset = getAssetInfoByAddress(cAsset);
+        AssetInfo memory borrowAsset = getAssetInfoByAddress(bAsset);
+        require(
+            userCollateral[account][cAsset].balance >= cAmount,
+            "Not enough balance"
+        );
+        require(
+            userCollateral[account][bAsset].borrowBalance >= 0,
+            "Not borrow this asset"
+        );
+        uint256 liquidatedAmount = mulPrice(
+            cAmount,
+            getPrice(collateralAsset.priceFeed),
+            collateralAsset.scale
+        );
+        uint256 deltaValue = mulFactor(
+            liquidatedAmount,
+            collateralAsset.liquidationFactor
+        );
+        uint256 bAmount = divPrice(
+            deltaValue,
+            getPrice(borrowAsset.priceFeed),
+            borrowAsset.scale
+        );
+        require(
+            userCollateral[account][bAsset].borrowBalance >= bAmount,
+            "Liquidated too much"
+        );
+        userCollateral[account][cAsset].balance -= cAmount;
+        userCollateral[account][bAsset].borrowBalance -= uint128(bAmount);
     }
 
     /**

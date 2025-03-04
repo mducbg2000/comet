@@ -1,32 +1,31 @@
-import { expect, exp, makeProtocol, portfolio, Protocol } from './helpers';
+import { expect, exp, makeProtocol, Protocol } from './helpers';
 
 describe('Liquidation', function () {
   let _protocol: Protocol;
   beforeEach(async () => {
     const protocol = await makeProtocol({
-      base: 'WETH',
+      base: 'USDT',
       baseBorrowMin: exp(0.1, 18),
-      supplyInterestRateBase: 0,
-      supplyInterestRateSlopeLow: 0,
-      supplyInterestRateSlopeHigh: 0,
-      borrowInterestRateBase: 0,
-      borrowInterestRateSlopeLow: 0,
-      borrowInterestRateSlopeHigh: 0,
       assets: {
+        USDT: {
+          decimals: 6,
+          initial: 1e8,
+        },
         USDC: {
           initial: 1e8,
           decimals: 6,
           borrowCF: exp(0.9, 18),
-          initialPrice: 1 / 1500,
+          initialPrice: 1,
           liquidationFactor: exp(1500 / 1520, 18),
-          supplyCap: exp(5000, 6)
+          supplyCap: exp(5000, 6),
         },
         WETH: {
           decimals: 18,
+          initialPrice: 1500,
         },
         AXS: {
           decimals: 18,
-          initialPrice: 1 / 100,
+          initialPrice: 1500 / 100,
         },
       },
     });
@@ -45,7 +44,7 @@ describe('Liquidation', function () {
     await comet.connect(bob).supply(USDC.address, exp(1000, 6));
 
     // borrow 0.2 ETH + 20 AXS
-    await comet.connect(bob).withdraw(WETH.address, exp(0.2, 18));
+    await comet.connect(bob).borrow(WETH.address, exp(0.2, 18));
     await comet.connect(bob).borrow(AXS.address, exp(20, 18));
 
     _protocol = protocol;
@@ -56,6 +55,7 @@ describe('Liquidation', function () {
       comet,
       users: [_absorber, bob],
     } = _protocol;
+
     expect(await comet.isLiquidatable(bob.address)).to.be.false;
   });
 
@@ -65,13 +65,7 @@ describe('Liquidation', function () {
       users: [_absorber, bob],
       priceFeeds,
     } = _protocol;
-    await priceFeeds.AXS.setRoundData(
-      0,
-      exp(1 / 48, 8),
-      0,
-      0,
-      0
-    );
+    await priceFeeds.AXS.setRoundData(0, exp(1500 / 48, 8), 0, 0, 0);
 
     expect(await comet.isLiquidatable(bob.address)).to.be.true;
   });
@@ -81,22 +75,13 @@ describe('Liquidation', function () {
       comet,
       users: [absorber, bob],
       priceFeeds,
-      tokens: { USDC }
+      tokens: { USDC, WETH },
     } = _protocol;
-    await priceFeeds.AXS.setRoundData(
-      0,
-      exp(1 / 48, 8),
-      0,
-      0,
-      0
-    );
-    const remainingUSDC = 1000 - 288;
-    await comet.connect(bob).withdraw(USDC.address, exp(remainingUSDC, 6));
-    await comet.connect(absorber).absorb(absorber.address, [bob.address]);
-    // thanh lý xong lại suppy vào 
-    await USDC.connect(bob).approve(comet.address, exp(remainingUSDC, 6));
-    await comet.connect(bob).supply(USDC.address, exp(remainingUSDC, 6));
+    await priceFeeds.AXS.setRoundData(0, exp(1500 / 48, 8), 0, 0, 0);
+    await comet
+      .connect(absorber)
+      .liquidate(bob.address, USDC.address, exp(289, 6), WETH.address);
 
-    expect(await comet.isLiquidatable(bob.address)).to.be.true;
+    expect(await comet.isLiquidatable(bob.address)).to.be.false;
   });
 });

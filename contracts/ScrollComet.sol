@@ -1394,6 +1394,13 @@ contract ScrollComet is CometMainInterface {
         // return borrowCollateral(msg.sender, msg.sender, asset, amount);
     }
 
+    function liquidate(
+        address account,
+        address cAsset,
+        uint128 cAmount,
+        address bAsset
+    ) external override {}
+
     /**
      * @notice Absorb a list of underwater accounts onto the protocol balance sheet
      * @param absorber The recipient of the incentive paid to the caller of absorb
